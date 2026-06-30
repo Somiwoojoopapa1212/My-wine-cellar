@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#4D204D"/>
+  <!-- Wine glass bowl -->
+  <path d="M168 120 L344 120 Q352 200 310 268 Q280 316 256 326 Q232 316 202 268 Q160 200 168 120 Z"
+        fill="none" stroke="white" stroke-width="18" stroke-linejoin="round"/>
+  <!-- Stem -->
+  <line x1="256" y1="326" x2="256" y2="400" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <!-- Base -->
+  <line x1="200" y1="400" x2="312" y2="400" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <!-- Wine fill -->
+  <path d="M183 196 Q210 240 256 256 Q302 240 329 196 Z" fill="rgba(255,255,255,0.35)"/>
+</svg>

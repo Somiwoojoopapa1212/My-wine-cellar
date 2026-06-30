@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MWC - My Wine Cellar</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4D204D">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MWC">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <style>
+    :root {
+      --primary: #4D204D;
+      --primary-light: #7A3878;
+      --primary-pale: #A060A0;
+      --bg: #FBF5FC;
+      --bg-card: #FFFFFF;
+      --text: #1A0E18;
+      --text-sub: #6B5068;
+      --border: #E0D0E4;
+      --chip-bg: #F0E4F0;
+      --hdr: 56px;
+    }
+    [data-theme="dark"] {
+      --bg: #1A0E18;
+      --bg-card: #2A1A28;
+      --text: #E8E0EE;
+      --text-sub: #A090A8;
+      --border: #3D2A3C;
+      --chip-bg: #3D2A3C;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background .2s, color .2s;
+    }
+
+    /* ── HEADER ── */
+    #header {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--hdr);
+      background: var(--primary);
+      display: flex; align-items: center; padding: 0 12px; gap: 10px;
+      z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+    #logo { font-size: 21px; font-weight: 900; color: #fff; letter-spacing: 2px; white-space: nowrap; }
+    #search-input {
+      flex: 1; height: 36px; border: none; border-radius: 18px;
+      padding: 0 14px; font-size: 14px;
+      background: rgba(255,255,255,.2); color: #fff; outline: none;
+    }
+    #search-input::placeholder { color: rgba(255,255,255,.6); }
+    #search-input:focus { background: rgba(255,255,255,.3); }
+    #dark-toggle {
+      background: none; border: none; color: #fff; font-size: 20px;
+      cursor: pointer; width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center; border-radius: 50%;
+    }
+
+    /* ── FILTER BAR ── */
+    #filter-bar {
+      position: fixed; top: var(--hdr); left: 0; right: 0;
+      background: var(--bg-card); border-bottom: 1px solid var(--border);
+      z-index: 90; padding: 8px 12px 8px;
+    }
+    #type-chips {
+      display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 7px;
+    }
+    #type-chips::-webkit-scrollbar { display: none; }
+    .type-chip {
+      padding: 4px 13px; border-radius: 16px; border: 1.5px solid var(--border);
+      background: var(--chip-bg); color: var(--text); font-size: 12px; font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: all .15s; user-select: none;
+    }
+    .type-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    #filter-row2 { display: flex; gap: 6px; }
+    .filter-sel {
+      flex: 1; height: 32px; border: 1.5px solid var(--border); border-radius: 8px;
+      background: var(--bg); color: var(--text); font-size: 12px;
+      padding: 0 6px; outline: none; cursor: pointer; min-width: 0;
+    }
+
+    /* ── MAIN ── */
+    #main { padding: 0 12px 88px; }
+    #stats-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0 6px; font-size: 12px; color: var(--text-sub);
+    }
+    #clear-filters-btn {
+      display: none; font-size: 11px; color: var(--primary); font-weight: 700;
+      background: none; border: none; cursor: pointer; padding: 2px 8px;
+      border-radius: 10px; border: 1px solid var(--primary);
+    }
+
+    /* ── WINE CARD ── */
+    .wine-card {
+      background: var(--bg-card); border-radius: 14px; padding: 14px;
+      margin-bottom: 10px; border: 1px solid var(--border);
+      cursor: pointer; transition: transform .1s;
+    }
+    .wine-card:active { transform: scale(.98); }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+    .wine-name { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; flex: 1; }
+    .bottle-badge {
+      background: var(--primary); color: #fff; font-size: 13px; font-weight: 700;
+      padding: 2px 10px; border-radius: 12px; white-space: nowrap; flex-shrink: 0;
+    }
+    .wine-winery { font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
+    .card-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    .mc { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+    .ct-레드    { background:#F0D0D0; color:#8B1A1A; }
+    .ct-화이트  { background:#FDF5CC; color:#7A6000; }
+    .ct-로제    { background:#FAD8E0; color:#A0204A; }
+    .ct-스파클링{ background:#D0E8F0; color:#1A5870; }
+    .ct-디저트  { background:#F0E4C8; color:#7A4010; }
+    .ct-주정강화{ background:#E0D0F0; color:#3A1A8B; }
+    .ct-기타    { background:#D8ECD8; color:#1A5A1A; }
+    [data-theme="dark"] .ct-레드    { background:#3A1010; color:#F0A0A0; }
+    [data-theme="dark"] .ct-화이트  { background:#3A3010; color:#F0D870; }
+    [data-theme="dark"] .ct-로제    { background:#3A1020; color:#F0A0B8; }
+    [data-theme="dark"] .ct-스파클링{ background:#10283A; color:#80C8E8; }
+    [data-theme="dark"] .ct-디저트  { background:#3A2010; color:#E8B870; }
+    [data-theme="dark"] .ct-주정강화{ background:#1A1030; color:#B090F0; }
+    [data-theme="dark"] .ct-기타    { background:#102010; color:#90D090; }
+    .mc-dim { background: var(--chip-bg); color: var(--text-sub); }
+    .card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }
+    .wine-price { font-size: 13px; font-weight: 600; color: var(--primary-pale); }
+    .wine-rating { font-size: 12px; color: var(--text-sub); background: var(--chip-bg); padding: 2px 8px; border-radius: 10px; }
+    .wine-memo { font-size: 12px; color: var(--text-sub); margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── EMPTY / NO-RESULT ── */
+    #empty-state, #no-results {
+      text-align: center; padding: 60px 20px; color: var(--text-sub); display: none;
+    }
+    #empty-state .ei { font-size: 48px; margin-bottom: 12px; }
+    #empty-state .et { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    #empty-state .es { font-size: 13px; }
+    #no-results { font-size: 14px; }
+
+    /* ── FAB ── */
+    #fab {
+      position: fixed; bottom: 24px; right: 20px;
+      width: 56px; height: 56px; border-radius: 28px;
+      background: var(--primary); color: #fff; font-size: 30px;
+      border: none; cursor: pointer;
+      box-shadow: 0 4px 18px rgba(77,32,77,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; transition: transform .15s;
+    }
+    #fab:active { transform: scale(.9); }
+
+    /* ── BACKDROP ── */
+    #backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      z-index: 200; opacity: 0; pointer-events: none; transition: opacity .25s;
+    }
+    #backdrop.show { opacity: 1; pointer-events: all; }
+
+    /* ── FORM PANEL ── */
+    #form-panel {
+      position: fixed; inset: 0; background: var(--bg);
+      z-index: 300; transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+      display: flex; flex-direction: column;
+    }
+    #form-panel.show { transform: translateY(0); }
+    #form-hdr {
+      background: var(--primary); color: #fff;
+      padding: 0 12px; height: var(--hdr);
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    }
+    #form-title { flex: 1; font-size: 17px; font-weight: 700; }
+    .fhbtn {
+      background: none; border: none; color: #fff;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      padding: 6px 12px; border-radius: 8px;
+    }
+    .fhbtn:active { background: rgba(255,255,255,.2); }
+    #form-body { flex: 1; overflow-y: auto; padding: 16px 14px 32px; }
+    .fg { margin-bottom: 16px; }
+    .fl {
+      font-size: 11px; font-weight: 700; color: var(--text-sub);
+      margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .fl .req { color: #E03060; }
+    .fi, .fs, .fta {
+      width: 100%; padding: 10px 12px; border: 1.5px solid var(--border);
+      border-radius: 10px; background: var(--bg-card); color: var(--text);
+      font-size: 15px; outline: none; transition: border-color .15s; font-family: inherit;
+    }
+    .fi:focus, .fs:focus, .fta:focus { border-color: var(--primary); }
+    .fta { height: 80px; resize: none; line-height: 1.5; }
+    .frow { display: flex; gap: 10px; }
+    .frow .fg { flex: 1; min-width: 0; }
+    .bottle-stepper {
+      display: flex; align-items: center; height: 44px;
+      border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden;
+      background: var(--bg-card);
+    }
+    .sbtn {
+      width: 48px; height: 100%; background: var(--chip-bg); border: none;
+      font-size: 24px; color: var(--primary); cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sbtn:active { background: var(--border); }
+    #bottle-count {
+      flex: 1; text-align: center; font-size: 18px; font-weight: 800;
+      color: var(--text); line-height: 44px;
+    }
+    .rating-row { display: flex; gap: 8px; }
+    .rating-row .fs { flex: 1.3; }
+    .rating-row .fi { flex: 1; }
+
+    /* ── DETAIL SHEET ── */
+    #detail-sheet {
+      position: fixed; left: 0; right: 0; bottom: 0; max-height: 88vh;
+      background: var(--bg-card); border-radius: 20px 20px 0 0;
+      z-index: 300; transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+      display: flex; flex-direction: column;
+    }
+    #detail-sheet.show { transform: translateY(0); }
+    .sh-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 10px auto 0; flex-shrink: 0; }
+    #sheet-body { flex: 1; overflow-y: auto; padding: 14px 16px 12px; }
+    #sh-name { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 3px; line-height: 1.3; }
+    #sh-winery { font-size: 13px; color: var(--text-sub); margin-bottom: 12px; }
+    .sh-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .sh-chip { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: var(--chip-bg); color: var(--text-sub); font-weight: 500; }
+    .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .d-item { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+    .d-lbl { font-size: 11px; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .d-val { font-size: 15px; font-weight: 700; color: var(--text); }
+    .d-val.big { font-size: 22px; color: var(--primary); }
+    .d-memo { background: var(--bg); border-radius: 10px; padding: 12px; margin-bottom: 14px; }
+    .d-memo-lbl { font-size: 11px; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .d-memo-txt { font-size: 14px; color: var(--text); line-height: 1.6; white-space: pre-wrap; }
+    .ext-links { display: flex; gap: 8px; margin-bottom: 14px; }
+    .ext-btn {
+      flex: 1; padding: 10px 6px; border-radius: 10px; border: 1.5px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 13px; font-weight: 700;
+      text-align: center; cursor: pointer; text-decoration: none;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .ext-btn:active { background: var(--chip-bg); }
+    .sheet-actions { display: flex; gap: 10px; padding: 8px 16px 24px; flex-shrink: 0; }
+    .btn-edit {
+      flex: 1; padding: 13px; border-radius: 12px; border: none;
+      background: var(--primary); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .btn-edit:active { opacity: .85; }
+    .btn-del {
+      padding: 13px 20px; border-radius: 12px;
+      border: 1.5px solid #C03050; background: none;
+      color: #C03050; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .btn-del:active { background: #FFF0F4; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 92px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #333; color: #fff; padding: 10px 22px;
+      border-radius: 22px; font-size: 14px; z-index: 500;
+      opacity: 0; transition: all .25s; pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <span id="logo">MWC</span>
+  <input type="text" id="search-input" placeholder="와인명, 생산자, 품종 검색...">
+  <button id="dark-toggle" onclick="toggleDark()">🌙</button>
+</div>
+
+<!-- Filter bar -->
+<div id="filter-bar">
+  <div id="type-chips">
+    <div class="type-chip active" data-type="전체" onclick="setType(this)">전체</div>
+    <div class="type-chip" data-type="레드" onclick="setType(this)">레드</div>
+    <div class="type-chip" data-type="화이트" onclick="setType(this)">화이트</div>
+    <div class="type-chip" data-type="로제" onclick="setType(this)">로제</div>
+    <div class="type-chip" data-type="스파클링" onclick="setType(this)">스파클링</div>
+    <div class="type-chip" data-type="디저트" onclick="setType(this)">디저트</div>
+    <div class="type-chip" data-type="주정강화" onclick="setType(this)">주정강화</div>
+    <div class="type-chip" data-type="기타" onclick="setType(this)">기타</div>
+  </div>
+  <div id="filter-row2">
+    <select class="filter-sel" id="f-cfilter" onchange="applyFilters()">
+      <option value="">국가 전체</option>
+    </select>
+    <select class="filter-sel" id="f-gfilter" onchange="applyFilters()">
+      <option value="">품종 전체</option>
+    </select>
+    <select class="filter-sel" id="sort-sel" onchange="applyFilters()">
+      <option value="addedDesc">최근 등록순</option>
+      <option value="vintageAsc">빈티지 ↑ (오래된순)</option>
+      <option value="vintageDesc">빈티지 ↓ (최신순)</option>
+      <option value="nameAsc">이름순</option>
+      <option value="priceDesc">가격 높은순</option>
+      <option value="bottlesDesc">병수 많은순</option>
+    </select>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="stats-bar">
+    <span id="stats-txt"></span>
+    <button id="clear-filters-btn" onclick="clearFilters()">필터 초기화</button>
+  </div>
+  <div id="wine-list"></div>
+  <div id="no-results">검색 결과가 없습니다</div>
+  <div id="empty-state">
+    <div class="ei">🍷</div>
+    <div class="et">셀러가 비어 있습니다</div>
+    <div class="es">+ 버튼을 눌러 와인을 추가하세요</div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button id="fab" onclick="openForm(null)">+</button>
+
+<!-- Backdrop -->
+<div id="backdrop"></div>
+
+<!-- Form Panel -->
+<div id="form-panel">
+  <div id="form-hdr">
+    <button class="fhbtn" onclick="closeForm()">✕</button>
+    <span id="form-title">와인 추가</span>
+    <button class="fhbtn" onclick="saveWine()">저장</button>
+  </div>
+  <div id="form-body">
+
+    <div class="fg">
+      <label class="fl">와인명 <span class="req">*</span></label>
+      <input type="text" class="fi" id="fi-name" placeholder="와인 이름을 입력하세요">
+    </div>
+
+    <div class="fg">
+      <label class="fl">생산자 / 와이너리</label>
+      <input type="text" class="fi" id="fi-winery" placeholder="생산자 또는 와이너리명">
+    </div>
+
+    <div class="fg">
+      <label class="fl">와인 종류 <span class="req">*</span></label>
+      <select class="fs" id="fi-type">
+        <option value="">선택하세요</option>
+        <option>레드</option>
+        <option>화이트</option>
+        <option>로제</option>
+        <option>스파클링</option>
+        <option>디저트</option>
+        <option>주정강화</option>
+        <option>기타</option>
+      </select>
+    </div>
+
+    <div class="frow">
+      <div class="fg">
+        <label class="fl">국가</label>
+        <select class="fs" id="fi-country" onchange="updateRegions()">
+          <option value="">선택</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">지역 / 아펠라시옹</label>
+        <select class="fs" id="fi-region">
+          <option value="">선택</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">품종</label>
+      <select class="fs" id="fi-grape">
+        <option value="">선택하세요</option>
+      </select>
+    </div>
+
+    <div class="frow">
+      <div class="fg">
+        <label class="fl">빈티지</label>
+        <select class="fs" id="fi-vintage">
+          <option value="">선택</option>
+          <option value="NV">NV (논 빈티지)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">보유 병수</label>
+        <div class="bottle-stepper">
+          <button class="sbtn" onclick="chgBottles(-1)">−</button>
+          <span id="bottle-count">1</span>
+          <button class="sbtn" onclick="chgBottles(1)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="frow">
+      <div class="fg">
+        <label class="fl">구매가 (₩)</label>
+        <input type="number" class="fi" id="fi-price" placeholder="0">
+      </div>
+      <div class="fg">
+        <label class="fl">구매처</label>
+        <input type="text" class="fi" id="fi-purchase" placeholder="구매한 곳">
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">평점</label>
+      <div class="rating-row">
+        <select class="fs" id="fi-rsrc">
+          <option value="">출처 선택</option>
+          <option>Vivino</option>
+          <option>Wine Searcher</option>
+          <option>Wine Spectator</option>
+          <option>Wine Enthusiast</option>
+          <option>기타</option>
+        </select>
+        <input type="text" class="fi" id="fi-rscore" placeholder="예: 4.2 또는 92">
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">메모</label>
+      <textarea class="fta" id="fi-memo" placeholder="음용 시기, 구매 동기, 특이사항 등"></textarea>
+    </div>
+
+  </div>
+</div>
+
+<!-- Detail Bottom Sheet -->
+<div id="detail-sheet">
+  <div class="sh-handle"></div>
+  <div id="sheet-body">
+    <div id="sh-name"></div>
+    <div id="sh-winery"></div>
+    <div class="sh-chips" id="sh-chips"></div>
+    <div class="d-grid" id="d-grid"></div>
+    <div class="ext-links" id="ext-links"></div>
+    <div class="d-memo" id="d-memo" style="display:none">
+      <div class="d-memo-lbl">메모</div>
+      <div class="d-memo-txt" id="d-memo-txt"></div>
+    </div>
+  </div>
+  <div class="sheet-actions">
+    <button class="btn-edit" onclick="editCurrent()">수정</button>
+    <button class="btn-del" onclick="deleteCurrent()">삭제</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────
+
+const CR = {
+  "프랑스":     ["보르도","부르고뉴","샹파뉴","론","알자스","루아르","랑그도크-루시용","프로방스","쥐라","사부아","기타"],
+  "이탈리아":   ["토스카나","피에몬테","베네토","시칠리아","캄파니아","풀리아","움브리아","마르케","아브루쪼","사르데냐","기타"],
+  "스페인":     ["리오하","리베라 델 두에로","프리오라트","갈리시아","카탈루냐","카스티야 라 만차","루에다","나바라","헤레스(셰리)","기타"],
+  "포르투갈":   ["도우루","알렌테주","빈호 베르드","다웅","포르투(주정강화)","기타"],
+  "독일":       ["모젤","라인가우","팔츠","라인헤센","바덴","프랑켄","나헤","기타"],
+  "오스트리아": ["니더외스터라이히","부르겐란트","슈타이어마르크","빈","기타"],
+  "미국":       ["나파 밸리","소노마","오레곤","워싱턴","기타"],
+  "칠레":       ["마이포 밸리","카사블랑카","콜차과","아콩카과","마울레","기타"],
+  "아르헨티나": ["멘도사","살타","파타고니아","리오 네그로","기타"],
+  "호주":       ["바로사 밸리","맥라렌 베일","클레어 밸리","야라 밸리","쿠나와라","마가렛 리버","기타"],
+  "뉴질랜드":   ["말버러","호크스 베이","센트럴 오타고","기타"],
+  "남아프리카": ["스텔렌보스","프란슈호크","케이프 타운","기타"],
+  "그리스":     ["산토리니","나우사","네메아","기타"],
+  "헝가리":     ["토카이","에게르","기타"],
+  "조지아":     ["카헤티","카르틀리","기타"],
+  "기타":       ["기타"]
+};
+
+const GRAPES = [
+  {sep:"── 레드 품종 ──"},
+  "카베르네 소비뇽","메를로","피노 누아","시라/쉬라즈","그르나슈/가르나차",
+  "산지오베제","네비올로","템프라니요","말벡","카베르네 프랑",
+  "진판델","바르베라","몬테풀치아노","무르베드르","돌체토",
+  "피노타지","투리가 나시오날","사그란티노",
+  {sep:"── 화이트 품종 ──"},
+  "샤르도네","소비뇽 블랑","리슬링","피노 그리/그리지오","게뷔르츠트라미너",
+  "알바리뇨","비오니에","그뤼너 벨트리너","모스카토/뮈스카","슈냉 블랑",
+  "세미용","베르멘티노","피아노","그레코","베르데호","토론테스",
+  {sep:"── 블렌드 ──"},
+  "보르도 블렌드(레드)","보르도 블렌드(화이트)","론 블렌드(레드)","론 블렌드(화이트)",
+  "GSM 블렌드","슈퍼 투스칸","기타 블렌드",
+  {sep:"── 기타 ──"},
+  "기타"
+];
+
+// ── STATE ─────────────────────────────────────────────
+
+let wines     = JSON.parse(localStorage.getItem('mwc-wines') || '[]');
+let curType   = '전체';
+let curCnt    = '';
+let curGrape  = '';
+let curSort   = 'addedDesc';
+let curSearch = '';
+let curId     = null;
+let editMode  = false;
+let bottles   = 1;
+let isDark    = localStorage.getItem('mwc-dark') === 'true';
+
+// ── INIT ──────────────────────────────────────────────
+
+function init() {
+  applyTheme();
+  buildFormCountry();
+  buildFormGrape();
+  buildVintage();
+  renderWines();
+  adjustLayout();
+
+  document.getElementById('search-input').addEventListener('input', e => {
+    curSearch = e.target.value.trim().toLowerCase();
+    applyFilters();
+  });
+
+  document.getElementById('backdrop').addEventListener('click', () => {
+    if (document.getElementById('form-panel').classList.contains('show')) closeForm();
+    else closeDetail();
+  });
+
+  // Swipe down to close detail
+  let sy = 0;
+  const sh = document.getElementById('detail-sheet');
+  sh.addEventListener('touchstart', e => { sy = e.touches[0].clientY; }, { passive: true });
+  sh.addEventListener('touchmove', e => { if (e.touches[0].clientY - sy > 60) closeDetail(); }, { passive: true });
+
+  window.addEventListener('resize', adjustLayout);
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+function adjustLayout() {
+  const h = document.getElementById('header').offsetHeight + document.getElementById('filter-bar').offsetHeight + 8;
+  document.getElementById('main').style.paddingTop = h + 'px';
+}
+
+// ── THEME ─────────────────────────────────────────────
+
+function applyTheme() {
+  document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.getElementById('dark-toggle').textContent = isDark ? '☀️' : '🌙';
+}
+
+function toggleDark() {
+  isDark = !isDark;
+  localStorage.setItem('mwc-dark', isDark);
+  applyTheme();
+}
+
+// ── FORM DROPDOWNS ────────────────────────────────────
+
+function buildFormCountry() {
+  const sel = document.getElementById('fi-country');
+  Object.keys(CR).forEach(c => {
+    sel.appendChild(new Option(c, c));
+  });
+}
+
+function buildFormGrape() {
+  const sel = document.getElementById('fi-grape');
+  GRAPES.forEach(g => {
+    if (g.sep) {
+      const o = new Option(g.sep, '');
+      o.disabled = true;
+      o.style.cssText = 'color:#999;font-style:italic';
+      sel.appendChild(o);
+    } else {
+      sel.appendChild(new Option(g, g));
+    }
+  });
+}
+
+function buildVintage() {
+  const sel = document.getElementById('fi-vintage');
+  const yr = new Date().getFullYear();
+  for (let y = yr; y >= 1950; y--) sel.appendChild(new Option(y, y));
+}
+
+function updateRegions() {
+  const country = document.getElementById('fi-country').value;
+  const rSel = document.getElementById('fi-region');
+  rSel.innerHTML = '<option value="">선택</option>';
+  if (country && CR[country]) {
+    CR[country].forEach(r => rSel.appendChild(new Option(r, r)));
+  }
+}
+
+// ── FILTER DROPDOWNS (dynamic, shows only existing values) ──
+
+function rebuildFilterDropdowns() {
+  const cSel = document.getElementById('f-cfilter');
+  const gSel = document.getElementById('f-gfilter');
+  const pc = cSel.value; const pg = gSel.value;
+
+  cSel.innerHTML = '<option value="">국가 전체</option>';
+  const countries = [...new Set(wines.map(w => w.country).filter(Boolean))].sort((a,b) => a.localeCompare(b,'ko'));
+  countries.forEach(c => cSel.appendChild(new Option(c, c)));
+  if (countries.includes(pc)) cSel.value = pc;
+
+  gSel.innerHTML = '<option value="">품종 전체</option>';
+  const grapes = [...new Set(wines.map(w => w.grape).filter(Boolean))].sort((a,b) => a.localeCompare(b,'ko'));
+  grapes.forEach(g => gSel.appendChild(new Option(g, g)));
+  if (grapes.includes(pg)) gSel.value = pg;
+}
+
+// ── FILTER / SORT ─────────────────────────────────────
+
+function setType(el) {
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  curType = el.dataset.type;
+  applyFilters();
+}
+
+function applyFilters() {
+  curCnt   = document.getElementById('f-cfilter').value;
+  curGrape = document.getElementById('f-gfilter').value;
+  curSort  = document.getElementById('sort-sel').value;
+  renderWines();
+  updateClearBtn();
+}
+
+function clearFilters() {
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+  document.querySelector('.type-chip[data-type="전체"]').classList.add('active');
+  curType = '전체'; curCnt = ''; curGrape = ''; curSearch = '';
+  document.getElementById('f-cfilter').value = '';
+  document.getElementById('f-gfilter').value = '';
+  document.getElementById('search-input').value = '';
+  renderWines();
+  updateClearBtn();
+}
+
+function updateClearBtn() {
+  const active = curType !== '전체' || curCnt || curGrape || curSearch;
+  document.getElementById('clear-filters-btn').style.display = active ? 'inline-block' : 'none';
+}
+
+function getFiltered() {
+  let list = [...wines];
+  if (curType !== '전체') list = list.filter(w => w.type === curType);
+  if (curCnt)   list = list.filter(w => w.country === curCnt);
+  if (curGrape) list = list.filter(w => w.grape === curGrape);
+  if (curSearch) {
+    list = list.filter(w =>
+      [w.name, w.winery, w.country, w.region, w.grape, w.memo]
+        .some(v => (v || '').toLowerCase().includes(curSearch))
+    );
+  }
+  list.sort((a, b) => {
+    switch (curSort) {
+      case 'vintageAsc': {
+        const va = !a.vintage || a.vintage === 'NV' ? 9999 : +a.vintage || 9999;
+        const vb = !b.vintage || b.vintage === 'NV' ? 9999 : +b.vintage || 9999;
+        return va - vb;
+      }
+      case 'vintageDesc': {
+        const va = !a.vintage || a.vintage === 'NV' ? 0 : +a.vintage || 0;
+        const vb = !b.vintage || b.vintage === 'NV' ? 0 : +b.vintage || 0;
+        return vb - va;
+      }
+      case 'nameAsc':     return (a.name||'').localeCompare(b.name||'','ko');
+      case 'priceDesc':   return (+b.price||0) - (+a.price||0);
+      case 'bottlesDesc': return (+b.bottles||0) - (+a.bottles||0);
+      default:            return (b.addedAt||0) - (a.addedAt||0);
+    }
+  });
+  return list;
+}
+
+// ── RENDER ────────────────────────────────────────────
+
+function fmtPrice(p) { return p ? '₩' + (+p).toLocaleString('ko-KR') : ''; }
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderWines() {
+  const list = getFiltered();
+  const container = document.getElementById('wine-list');
+  const empty     = document.getElementById('empty-state');
+  const noRes     = document.getElementById('no-results');
+
+  container.innerHTML = '';
+
+  const totalB = wines.reduce((s,w) => s + (+w.bottles||0), 0);
+  document.getElementById('stats-txt').textContent = `총 ${wines.length}종 · ${totalB}병`;
+
+  rebuildFilterDropdowns();
+
+  if (!wines.length) { empty.style.display = 'block'; noRes.style.display = 'none'; return; }
+  empty.style.display = 'none';
+  if (!list.length)  { noRes.style.display = 'block'; return; }
+  noRes.style.display = 'none';
+
+  list.forEach(w => {
+    const card = document.createElement('div');
+    card.className = 'wine-card';
+    card.onclick = () => openDetail(w.id);
+
+    let chips = '';
+    if (w.type)    chips += `<span class="mc ct-${esc(w.type)}">${esc(w.type)}</span>`;
+    if (w.vintage) chips += `<span class="mc mc-dim">${esc(w.vintage)}</span>`;
+    if (w.grape)   chips += `<span class="mc mc-dim">${esc(w.grape)}</span>`;
+    if (w.country) chips += `<span class="mc mc-dim">${esc(w.country)}${w.region ? ' · ' + esc(w.region) : ''}</span>`;
+
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="wine-name">${esc(w.name)}</div>
+        <div class="bottle-badge">${w.bottles||1}병</div>
+      </div>
+      ${w.winery ? `<div class="wine-winery">${esc(w.winery)}</div>` : ''}
+      <div class="card-chips">${chips}</div>
+      <div class="card-bottom">
+        <span class="wine-price">${fmtPrice(w.price)}</span>
+        ${w.ratingSource && w.ratingScore ? `<span class="wine-rating">${esc(w.ratingSource)} ${esc(w.ratingScore)}</span>` : ''}
+      </div>
+      ${w.memo ? `<div class="wine-memo">${esc(w.memo)}</div>` : ''}
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ── FORM ──────────────────────────────────────────────
+
+function openForm(id) {
+  editMode = !!id;
+  curId = id || null;
+  document.getElementById('form-title').textContent = editMode ? '와인 수정' : '와인 추가';
+
+  // Reset
+  ['fi-name','fi-winery','fi-type','fi-country','fi-grape','fi-vintage',
+   'fi-price','fi-purchase','fi-rsrc','fi-rscore','fi-memo'].forEach(i => {
+    const el = document.getElementById(i);
+    el.value = '';
+  });
+  document.getElementById('fi-region').innerHTML = '<option value="">선택</option>';
+  bottles = 1; document.getElementById('bottle-count').textContent = '1';
+
+  if (editMode) {
+    const w = wines.find(x => x.id === id);
+    if (!w) return;
+    document.getElementById('fi-name').value    = w.name || '';
+    document.getElementById('fi-winery').value  = w.winery || '';
+    document.getElementById('fi-type').value    = w.type || '';
+    document.getElementById('fi-country').value = w.country || '';
+    updateRegions();
+    document.getElementById('fi-region').value  = w.region || '';
+    document.getElementById('fi-grape').value   = w.grape || '';
+    document.getElementById('fi-vintage').value = w.vintage || '';
+    document.getElementById('fi-price').value   = w.price || '';
+    document.getElementById('fi-purchase').value = w.purchasePlace || '';
+    document.getElementById('fi-rsrc').value    = w.ratingSource || '';
+    document.getElementById('fi-rscore').value  = w.ratingScore || '';
+    document.getElementById('fi-memo').value    = w.memo || '';
+    bottles = +w.bottles || 1;
+    document.getElementById('bottle-count').textContent = bottles;
+  }
+
+  document.getElementById('form-body').scrollTop = 0;
+  document.getElementById('form-panel').classList.add('show');
+  document.getElementById('backdrop').classList.add('show');
+}
+
+function closeForm() {
+  document.getElementById('form-panel').classList.remove('show');
+  document.getElementById('backdrop').classList.remove('show');
+}
+
+function chgBottles(d) {
+  bottles = Math.max(0, bottles + d);
+  document.getElementById('bottle-count').textContent = bottles;
+}
+
+function saveWine() {
+  const name = document.getElementById('fi-name').value.trim();
+  if (!name) { toast('와인명을 입력하세요'); return; }
+  const type = document.getElementById('fi-type').value;
+  if (!type) { toast('와인 종류를 선택하세요'); return; }
+
+  const wine = {
+    id:          editMode ? curId : Date.now().toString(),
+    name,
+    winery:       document.getElementById('fi-winery').value.trim(),
+    type,
+    country:      document.getElementById('fi-country').value,
+    region:       document.getElementById('fi-region').value,
+    grape:        document.getElementById('fi-grape').value,
+    vintage:      document.getElementById('fi-vintage').value,
+    bottles,
+    price:        document.getElementById('fi-price').value,
+    purchasePlace:document.getElementById('fi-purchase').value.trim(),
+    ratingSource: document.getElementById('fi-rsrc').value,
+    ratingScore:  document.getElementById('fi-rscore').value.trim(),
+    memo:         document.getElementById('fi-memo').value.trim(),
+    addedAt: editMode
+      ? (wines.find(w => w.id === curId)?.addedAt || Date.now())
+      : Date.now()
+  };
+
+  if (editMode) {
+    const i = wines.findIndex(w => w.id === curId);
+    if (i !== -1) wines[i] = wine;
+  } else {
+    wines.unshift(wine);
+  }
+
+  localStorage.setItem('mwc-wines', JSON.stringify(wines));
+  closeForm();
+  renderWines();
+  toast(editMode ? '수정되었습니다' : '와인이 추가되었습니다 🍷');
+}
+
+// ── DETAIL ────────────────────────────────────────────
+
+function openDetail(id) {
+  const w = wines.find(x => x.id === id);
+  if (!w) return;
+  curId = id;
+
+  document.getElementById('sh-name').textContent   = w.name;
+  document.getElementById('sh-winery').textContent = w.winery || '';
+
+  let chips = '';
+  if (w.type)    chips += `<span class="mc ct-${esc(w.type)}">${esc(w.type)}</span>`;
+  if (w.vintage) chips += `<span class="sh-chip">${esc(w.vintage === 'NV' ? 'NV' : w.vintage + '년')}</span>`;
+  if (w.grape)   chips += `<span class="sh-chip">${esc(w.grape)}</span>`;
+  if (w.country) chips += `<span class="sh-chip">${esc(w.country)}</span>`;
+  if (w.region)  chips += `<span class="sh-chip">${esc(w.region)}</span>`;
+  document.getElementById('sh-chips').innerHTML = chips;
+
+  let grid = `
+    <div class="d-item">
+      <div class="d-lbl">보유 병수</div>
+      <div class="d-val big">${w.bottles||1}병</div>
+    </div>
+  `;
+  if (w.price) grid += `
+    <div class="d-item">
+      <div class="d-lbl">구매가</div>
+      <div class="d-val">${fmtPrice(w.price)}</div>
+    </div>
+  `;
+  if (w.purchasePlace) grid += `
+    <div class="d-item">
+      <div class="d-lbl">구매처</div>
+      <div class="d-val" style="font-size:13px">${esc(w.purchasePlace)}</div>
+    </div>
+  `;
+  if (w.ratingSource && w.ratingScore) grid += `
+    <div class="d-item">
+      <div class="d-lbl">평점</div>
+      <div class="d-val">${esc(w.ratingSource)} <strong>${esc(w.ratingScore)}</strong></div>
+    </div>
+  `;
+  document.getElementById('d-grid').innerHTML = grid;
+
+  const q = encodeURIComponent((w.name || '') + (w.vintage && w.vintage !== 'NV' ? ' ' + w.vintage : ''));
+  document.getElementById('ext-links').innerHTML = `
+    <a class="ext-btn" href="https://www.vivino.com/search/wines?q=${q}" target="_blank" rel="noopener">
+      🍷 Vivino 검색
+    </a>
+    <a class="ext-btn" href="https://www.wine-searcher.com/find/${encodeURIComponent(w.name||'')}" target="_blank" rel="noopener">
+      🔍 Wine-Searcher
+    </a>
+  `;
+
+  const memoEl = document.getElementById('d-memo');
+  if (w.memo) {
+    memoEl.style.display = 'block';
+    document.getElementById('d-memo-txt').textContent = w.memo;
+  } else {
+    memoEl.style.display = 'none';
+  }
+
+  document.getElementById('sheet-body').scrollTop = 0;
+  document.getElementById('detail-sheet').classList.add('show');
+  document.getElementById('backdrop').classList.add('show');
+}
+
+function closeDetail() {
+  document.getElementById('detail-sheet').classList.remove('show');
+  document.getElementById('backdrop').classList.remove('show');
+}
+
+function editCurrent() {
+  document.getElementById('detail-sheet').classList.remove('show');
+  openForm(curId);
+}
+
+function deleteCurrent() {
+  if (!confirm('이 와인을 삭제할까요?')) return;
+  wines = wines.filter(w => w.id !== curId);
+  localStorage.setItem('mwc-wines', JSON.stringify(wines));
+  closeDetail();
+  renderWines();
+  toast('삭제되었습니다');
+}
+
+// ── TOAST ─────────────────────────────────────────────
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.classList.remove('show'), 2300);
+}
+
+// ── GO ─────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
